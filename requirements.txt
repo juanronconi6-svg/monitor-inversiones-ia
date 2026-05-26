@@ -6,4 +6,4 @@ scipy
 requests
 plotly
 fpdf
-kaleido
+kaleido==0.1.0.post1
