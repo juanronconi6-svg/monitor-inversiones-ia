@@ -800,6 +800,7 @@ Dictamen Final:
                                 """
                                 st.components.v1.html(html_preview, height=800, scrolling=True)
                                 
+                                # 5. Creación del Archivo PDF en Modo Claro
                                 pdf = FPDF()
                                 pdf.add_page()
                                 pdf.set_auto_page_break(auto=True, margin=15)
@@ -816,14 +817,21 @@ Dictamen Final:
                                 
                                 pdf.multi_cell(0, 5, txt=texto_parte2_pdf.encode('latin-1', 'replace').decode('latin-1'))
                                 
-                                pdf_buffer = io.BytesIO()
-                                pdf.output(pdf_buffer)
-                                pdf_buffer.seek(0)
+                                # SOLUCIÓN: Usamos un archivo temporal en lugar de BytesIO
+                                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+                                    ruta_pdf = tmp_pdf.name
+                                
+                                pdf.output(ruta_pdf)
+                                
+                                with open(ruta_pdf, "rb") as pdf_file:
+                                    pdf_bytes = pdf_file.read()
+                                
+                                os.remove(ruta_pdf) # Limpiamos el servidor
                                 
                                 st.markdown("<br>", unsafe_allow_html=True)
                                 st.download_button(
                                     label="📄 Descargar Informe en PDF",
-                                    data=pdf_buffer,
+                                    data=pdf_bytes,
                                     file_name=f"Informe_{ticker_seleccionado}.pdf",
                                     mime="application/pdf"
                                 )
