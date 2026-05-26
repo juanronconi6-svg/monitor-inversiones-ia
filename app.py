@@ -287,7 +287,7 @@ tickers_populares = {
     "🇦🇷 Grupo Financiero Galicia (GGAL)": "GGAL.BA",
     "🇦🇷 YPF S.A. (YPFD)": "YPFD.BA",
     "🇦🇷 Pampa Energía (PAMP)": "PAMP.BA",
-    "🇦🇷 Edenor (EDN)": "BCBA:EDN",
+    "🇦🇷 Edenor (EDN)": "EDN.BA",
     "🇦🇷 Aluar Aluminio (ALUA)": "ALUA.BA",
     "🇺🇸 Apple (AAPL)": "AAPL",
     "🇺🇸 Tesla (TSLA)": "TSLA",
