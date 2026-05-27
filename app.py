@@ -723,9 +723,6 @@ Fecha de Emisión: {pd.Timestamp.now().strftime("%d/%m/%Y")}
 1) RESUMEN EJECUTIVO Y CONTEXTO MACRO
 El activo {nombre_display} cotiza a ${precio_actual:,.2f}, {intro_dinamica}
 
-Contexto Sectorial y Noticias Relevantes (Análisis de Sentimiento):
-{noticias_contexto}
-
 2) INTERPRETACION DE INDICADORES TECNICOS
 {interpretacion_tecnica}
 
