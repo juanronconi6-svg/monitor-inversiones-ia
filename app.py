@@ -357,6 +357,12 @@ if ticker_seleccionado:
                     data.columns = data.columns.get_level_values(0)
                 data = data.dropna(subset=['Close'])
 
+                # --- FILTRO ANTI-BUG LOGARÍTMICO ---
+                # Eliminamos valores en cero o negativos de Yahoo Finance que rompen la escala de Plotly
+                data = data[data['Low'] > 0]
+                data = data[data['High'] > 0]
+                data = data[data['Close'] > 0]
+
                 data['SMA_20'] = data['Close'].rolling(window=20).mean()
                 data['SMA_50'] = data['Close'].rolling(window=50).mean()
                 data['SMA_100'] = data['Close'].rolling(window=100).mean()
@@ -504,7 +510,10 @@ if ticker_seleccionado:
                     f_col4.metric(metricas_mostrar[3][0], metricas_mostrar[3][1])
 
                     st.markdown("<br>", unsafe_allow_html=True)
-
+                    # Calculamos el rango dinámico del eje Y basado solo en el precio
+                    y_min = data['Low'].min() * 0.95  # 5% de margen abajo
+                    y_max = data['High'].max() * 1.05 # 5% de margen arriba
+                    
                     fig_precio = go.Figure()
                     fig_precio.add_trace(go.Candlestick(x=data.index, open=data['Open'], high=data['High'], low=data['Low'], close=data['Close'], name="Precio", increasing_line_color="#26a69a", decreasing_line_color="#ef5350"))
                     fig_precio.add_trace(go.Scatter(x=data.index, y=data['SMA_20'], name="SMA 20", line=dict(color="#2962FF", width=1.5)))
@@ -513,7 +522,18 @@ if ticker_seleccionado:
                     fig_precio.add_trace(go.Scatter(x=data.index, y=data['SMA_200'], name="SMA 200", line=dict(color="#808080", width=1.5)))
                     fig_precio.add_hline(y=resistencia, line_dash="dot", line_color="red", line_width=2, annotation_text="Resist. (10)", annotation_font_color="white")
                     fig_precio.add_hline(y=soporte, line_dash="dot", line_color="green", line_width=2, annotation_font_color="white", annotation_text="Soporte (10)") 
-                    fig_precio.update_layout(title=dict(text=f"Acción del Precio ({temporalidad})", font=dict(color="white")), height=450, plot_bgcolor='#2b3139', paper_bgcolor='#2b3139', font=dict(color='white'), yaxis_type="log" if escala == "Logarítmica" else "linear", xaxis_rangeslider_visible=False, margin=dict(l=10, r=10, t=40, b=10), legend=dict(font=dict(color='white')))
+                    fig_precio.update_layout(
+                        title=dict(text=f"Acción del Precio ({temporalidad})", font=dict(color="white")), 
+                        height=450, 
+                        plot_bgcolor='#2b3139', 
+                        paper_bgcolor='#2b3139', 
+                        font=dict(color='white'), 
+                        yaxis_type="log" if escala == "Logarítmica" else "linear", 
+                        yaxis_range=[np.log10(y_min), np.log10(y_max)] if escala == "Logarítmica" else [y_min, y_max], # <- ESTO ES LO NUEVO
+                        xaxis_rangeslider_visible=False, 
+                        margin=dict(l=10, r=10, t=40, b=10), 
+                        legend=dict(font=dict(color='white'))
+                    )
                     st.plotly_chart(fig_precio, use_container_width=True)
 
                     fig_rsi = go.Figure()
@@ -542,7 +562,22 @@ if ticker_seleccionado:
                     fig_boll.add_trace(go.Scatter(x=data.index, y=data['Bollinger_Lower'], line=dict(color='rgba(252, 213, 53, 0.4)', width=1, dash='dot'), fill='tonexty', fillcolor='rgba(252, 213, 53, 0.08)', name='Banda Inf.', hoverinfo='skip'))
                     fig_boll.add_trace(go.Scatter(x=data.index, y=data['SMA_20'], line=dict(color='#fcd535', width=1.5), name='SMA 20'))
                     fig_boll.add_trace(go.Scatter(x=data.index, y=data['Close'], line=dict(color='#00ff88', width=2), name='Precio'))
-                    fig_boll.update_layout(template='plotly_dark', plot_bgcolor='#2b3139', paper_bgcolor='#2b3139', margin=dict(l=10, r=10, t=40, b=10), xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#474d57'), hovermode='x unified', height=350, legend=dict(font=dict(color='white')))
+                    fig_boll.update_layout(
+                        template='plotly_dark', 
+                        plot_bgcolor='#2b3139', 
+                        paper_bgcolor='#2b3139', 
+                        margin=dict(l=10, r=10, t=40, b=10), 
+                        xaxis=dict(showgrid=False), 
+                        yaxis=dict(
+                            showgrid=True, 
+                            gridcolor='#474d57',
+                            type="log" if escala == "Logarítmica" else "linear", # <- Aplicamos la misma escala seleccionada
+                            range=[np.log10(y_min), np.log10(y_max)] if escala == "Logarítmica" else [y_min, y_max] # <- Forzamos el rango
+                        ), 
+                        hovermode='x unified', 
+                        height=350, 
+                        legend=dict(font=dict(color='white'))
+                    )
                     st.plotly_chart(fig_boll, use_container_width=True)
 
                 with tab_noticias:
