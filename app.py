@@ -399,10 +399,37 @@ if ticker_seleccionado:
                 comp_sector = ticker_info.get('sector', 'No Disponible')
                 comp_industry = ticker_info.get('industry', 'No Disponible')
                 comp_web = ticker_info.get('website', '#')
+                quote_type = ticker_info.get('quoteType', '')
 
+                # 1. Definimos la información visual original por defecto (para acciones)
+                html_datos_extra = f"""
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div>
+                        <span style="color: #848e9c; font-size: 0.85rem;">Sector:</span>
+                        <span style="color: #ffffff; font-size: 0.85rem; margin-left: 5px;">{comp_sector}</span>
+                    </div>
+                    <div style="border-left: 1px solid #474d57; padding-left: 20px;">
+                        <span style="color: #848e9c; font-size: 0.85rem;">Industria:</span>
+                        <span style="color: #ffffff; font-size: 0.85rem; margin-left: 5px;">{comp_industry}</span>
+                    </div>
+                    <div style="border-left: 1px solid #474d57; padding-left: 20px;">
+                        <a href="{comp_web}" target="_blank" style="color: #2962FF; font-size: 0.85rem; text-decoration: none;" onmouseover="this.style.color='#fcd535'" onmouseout="this.style.color='#2962FF'">
+                            🌐 Sitio Web Oficial
+                        </a>
+                    </div>
+                </div>
+                """
+
+                # 2. Si es un ETF, ocultamos esa fila HTML (dejamos todo lo demás intacto)
+                if quote_type == 'ETF':
+                    html_datos_extra = ""
+
+                # 3. Renderizamos la tarjeta corporativa
+                borde_estilo = "border-bottom: 1px solid #474d57; padding-bottom: 15px; margin-bottom: 15px;" if html_datos_extra else ""
+                
                 st.markdown(f"""
                 <div style="background-color: #2b3139; border: 1px solid #474d57; border-radius: 8px; padding: 20px; margin-bottom: 25px; margin-top: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #474d57; padding-bottom: 15px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; {borde_estilo}">
                         <div>
                             <span style="color: #848e9c; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Perfil Corporativo</span>
                             <h3 style="margin: 2px 0 0 0; color: #ffffff !important; font-size: 1.5rem;">{comp_name}</h3>
@@ -413,21 +440,7 @@ if ticker_seleccionado:
                             </span>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <div>
-                            <span style="color: #848e9c; font-size: 0.85rem;">Sector:</span>
-                            <span style="color: #ffffff; font-size: 0.85rem; margin-left: 5px;">{comp_sector}</span>
-                        </div>
-                        <div style="border-left: 1px solid #474d57; padding-left: 20px;">
-                            <span style="color: #848e9c; font-size: 0.85rem;">Industria:</span>
-                            <span style="color: #ffffff; font-size: 0.85rem; margin-left: 5px;">{comp_industry}</span>
-                        </div>
-                        <div style="border-left: 1px solid #474d57; padding-left: 20px;">
-                            <a href="{comp_web}" target="_blank" style="color: #2962FF; font-size: 0.85rem; text-decoration: none;" onmouseover="this.style.color='#fcd535'" onmouseout="this.style.color='#2962FF'">
-                                🌐 Sitio Web Oficial
-                            </a>
-                        </div>
-                    </div>
+                    {html_datos_extra}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -584,18 +597,58 @@ if ticker_seleccionado:
                     st.markdown("<h4 style='color: #fcd535 !important; margin-top: 10px;'>Radar del Mercado Financiero</h4>", unsafe_allow_html=True)
                     st.write("Monitoreo en tiempo real de los principales portales de economía y finanzas.")
                     
-                    if titulo_noticia:
-                        st.markdown(f"""
-                        <div style="background-color: #2b3139; border: 1px solid #fcd535; border-radius: 8px; padding: 15px 20px; margin-bottom: 15px; display: flex; align-items: center;">
-                            <span style="font-size: 2rem; margin-right: 15px;">🚨</span>
-                            <div>
-                                <span style="color: #fcd535 !important; font-size: 0.85rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Titular Principal - Ámbito Financiero</span><br>
-                                <a href="{link_noticia}" target="_blank" style="color: #ffffff; text-decoration: none; font-size: 1.15rem; font-weight: 600; transition: color 0.3s;" onmouseover="this.style.color='#fcd535'" onmouseout="this.style.color='#ffffff'">
-                                    {titulo_noticia}
-                                </a>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    
+                    # --- INICIO NUEVO BLOQUE: NOTICIAS DEL ACTIVO (INVESTING.COM) ---
+                    st.markdown("<h5 style='color: #848e9c !important; margin-top: 20px; margin-bottom: 10px;'>Activo seleccionado:</h5>", unsafe_allow_html=True)
+                    
+                    with st.spinner(f"Buscando noticias de {nombre_display} en Investing.com..."):
+                        try:
+                            import urllib.parse
+                            
+                            # 1. Limpiamos los nombres para hacer una búsqueda exacta
+                            ticker_limpio = ticker_seleccionado.split('.')[0]
+                            nombre_corto = nombre_display.replace(" S.A.", "").replace(" S.A", "").replace(" Inc.", "").strip()
+                            
+                            # 2. Búsqueda estricta: forzamos comillas y apuntamos SOLAMENTE al directorio /news
+                            query = f'"{nombre_corto}" OR "{ticker_limpio}" site:es.investing.com/news'
+                            query_codificada = urllib.parse.quote(query)
+                            url_rss = f"https://news.google.com/rss/search?q={query_codificada}&hl=es-419&gl=AR&ceid=AR:es-419"
+                            
+                            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                            res = requests.get(url_rss, headers=headers, timeout=5)
+                            
+                            if res.status_code == 200:
+                                root = ET.fromstring(res.content)
+                                items = root.findall('.//item')
+                                
+                                noticias_filtradas = []
+                                for item in items:
+                                    titulo_noti = item.find('title').text.split(" - ")[0].strip()
+                                    link_noti = item.find('link').text
+                                    
+                                    titulo_lower = titulo_noti.lower()
+                                    
+                                    # 3. Doble chequeo: Nos aseguramos de que el título mencione al activo 
+                                    # y bloqueamos palabras clave de páginas autogeneradas
+                                    if (ticker_limpio.lower() in titulo_lower or nombre_corto.lower() in titulo_lower) and "comparación" not in titulo_lower and "competencia" not in titulo_lower:
+                                        noticias_filtradas.append((titulo_noti, link_noti))
+                                        
+                                    if len(noticias_filtradas) == 3: # Frenamos cuando conseguimos las 3 perfectas
+                                        break
+                                
+                                if noticias_filtradas:
+                                    col_inv1, col_inv2 = st.columns(2)
+                                    for i, (titulo_noti, link_noti) in enumerate(noticias_filtradas):
+                                        col = col_inv1 if i % 2 == 0 else col_inv2
+                                        html_tarjeta = f"""<div style="background-color: #181a20; border: 1px solid #474d57; border-radius: 6px; padding: 12px; margin-bottom: 15px; height: 105px; overflow: hidden;"><span style="color: #848e9c; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">🗞️ INVESTING.COM</span><br><a href="{link_noti}" target="_blank" style="color: #eaecef; text-decoration: none; font-size: 0.9rem; line-height: 1.3; display: block; margin-top: 4px;" onmouseover="this.style.color='#fcd535'" onmouseout="this.style.color='#eaecef'">{titulo_noti}</a></div>"""
+                                        col.markdown(html_tarjeta, unsafe_allow_html=True)
+                                else:
+                                    st.info(f"No se encontraron noticias recientes específicas sobre {nombre_corto} en Investing.com.")
+                            else:
+                                st.warning("No se pudo conectar con el servidor de noticias.")
+                        except Exception as e:
+                            st.error(f"Error al cargar noticias específicas: {e}")
+                    # --- FIN NUEVO BLOQUE ---
 
                     with st.spinner("Actualizando radares de noticias secundarias..."):
                         noticias_secundarias = obtener_noticias_secundarias()
@@ -643,7 +696,49 @@ if ticker_seleccionado:
                                 if titulo_noticia:
                                     todas_las_noticias.insert(0, ("Ámbito Financiero", titulo_noticia, link_noticia))
                                 
-                                noticias_contexto = analizar_noticias_y_sentimiento(todas_las_noticias, nombre_display, ticker_info)
+                                noticias_macro = analizar_noticias_y_sentimiento(todas_las_noticias, nombre_display, ticker_info)
+                                
+                                noticias_especificas_texto = "No se detectaron noticias específicas recientes para este activo."
+                                try:
+                                    import urllib.parse
+                                    ticker_limpio = ticker_seleccionado.split('.')[0]
+                                    nombre_corto = nombre_display.replace(" S.A.", "").replace(" S.A", "").replace(" Inc.", "").strip()
+                                    query = f'"{nombre_corto}" OR "{ticker_limpio}" site:es.investing.com/news'
+                                    query_codificada = urllib.parse.quote(query)
+                                    url_rss = f"https://news.google.com/rss/search?q={query_codificada}&hl=es-419&gl=AR&ceid=AR:es-419"
+                                    
+                                    res_rss = requests.get(url_rss, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
+                                    if res_rss.status_code == 200:
+                                        root = ET.fromstring(res_rss.content)
+                                        items = root.findall('.//item')
+                                        noticias_especificas_lista = []
+                                        for item in items:
+                                            titulo_noti = item.find('title').text.split(" - ")[0].strip()
+                                            titulo_lower = titulo_noti.lower()
+                                            if (ticker_limpio.lower() in titulo_lower or nombre_corto.lower() in titulo_lower) and "comparación" not in titulo_lower and "competencia" not in titulo_lower:
+                                                noticias_especificas_lista.append(titulo_noti)
+                                            if len(noticias_especificas_lista) == 3:
+                                                break
+                                        
+                                        if noticias_especificas_lista:
+                                            positivas = ['sube', 'alza', 'crece', 'ganancia', 'récord', 'acuerdo', 'aprobación', 'mejora', 'fuerte', 'positivo', 'avanza', 'supera', 'inteligentes', 'bate', 'compra', 'optimismo', 'rally', 'dividendos']
+                                            negativas = ['cae', 'baja', 'pérdida', 'rojo', 'retrocede', 'despide', 'demanda', 'crisis', 'negativo', 'multa', 'desplome', 'tensión', 'venta', 'pesimismo', 'hundimiento', 'cautela']
+                                            
+                                            lineas_noticias = []
+                                            for titulo in noticias_especificas_lista:
+                                                score = 0
+                                                tit_low = titulo.lower()
+                                                if any(p in tit_low for p in positivas): score += 1
+                                                if any(n in tit_low for n in negativas): score -= 1
+                                                
+                                                impacto = "Positivo" if score > 0 else "Negativo" if score < 0 else "Neutral"
+                                                lineas_noticias.append(f"- [{impacto}] {titulo}")
+                                            
+                                            noticias_especificas_texto = "\n".join(lineas_noticias)
+                                except Exception:
+                                    pass
+                                
+                                noticias_contexto = f" IMPACTO EN EL ACTIVO:\n{noticias_especificas_texto}\n"
                                 
                                 macd_actual = float(data['MACD'].iloc[-1])
                                 signal_actual = float(data['Signal'].iloc[-1])
@@ -668,8 +763,15 @@ if ticker_seleccionado:
 
                                 ruta_imagen_grafico = None
                                 try:
+                                    # 1. Hacemos un clon del gráfico original solo para el PDF
+                                    fig_pdf = go.Figure(fig_a_exportar)
+                                    
+                                    # 2. Le inyectamos márgenes anchos (60px izquierda, 40px derecha) para que no ampute los números
+                                    fig_pdf.update_layout(margin=dict(l=60, r=40, t=40, b=40))
+                                    
                                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
-                                        fig_a_exportar.write_image(tmpfile.name, engine="kaleido", width=900, height=450)
+                                        # 3. Sacamos la foto del clon en alta resolución
+                                        fig_pdf.write_image(tmpfile.name, engine="kaleido", width=900, height=450, scale=2)
                                         ruta_imagen_grafico = tmpfile.name
                                 except Exception as e:
                                     st.error("⚠️ Error al capturar el gráfico. ¿Aseguraste instalar 'kaleido' en la terminal?")
@@ -743,20 +845,46 @@ if ticker_seleccionado:
                                 elif tendencia_str == "bajista": accion_precio_dinamica = f"El cuadro de precios exhibe un marcado deterioro estructural. Las medias móviles están actuando como resistencia dinámica, haciendo del nivel de ${resistencia:,.2f} un techo duro de vulnerar. Es imperativo vigilar la pérdida del piso en ${soporte:,.2f} para evitar claudicaciones mayores."
                                 else: accion_precio_dinamica = f"El papel atraviesa una fase de lateralización y compresión temporal de volatilidad. La definición de esta pausa estratégica dependerá puramente de la ruptura direccional: ya sea validando fortaleza por sobre ${resistencia:,.2f} o cediendo ante la base de soporte en ${soporte:,.2f}."
 
+                                # --- DICTAMEN FINAL 360 (TÉCNICO, FUNDAMENTAL Y NOTICIAS) ---
+                                # 1. Análisis Técnico
+                                resumen_tec = "favorable" if tendencia_str == "alcista" and estado_macd == "alcista" else ("desfavorable" if tendencia_str == "bajista" else "neutral")
+                                
+                                # 2. Análisis Fundamental (P/E Ratio)
+                                pe_val = ticker_info.get('trailingPE')
+                                if isinstance(pe_val, (int, float)):
+                                    if pe_val < 15: fund_text = "una valuación atractiva (P/E bajo)"
+                                    elif pe_val > 30: fund_text = "múltiplos de valuación exigentes (P/E alto)"
+                                    else: fund_text = "una valuación fundamental razonable"
+                                else:
+                                    fund_text = "una estructura de valuación particular"
+
+                                # 3. Análisis de Sentimiento (Noticias)
+                                cant_pos = noticias_especificas_texto.count("[Positivo]")
+                                cant_neg = noticias_especificas_texto.count("[Negativo]")
+                                if cant_pos > cant_neg: noti_text = "un flujo de noticias recientes optimista"
+                                elif cant_neg > cant_pos: noti_text = "vientos de frente mediáticos (titulares negativos)"
+                                else: noti_text = "un impacto mediático reciente mixto o neutral"
+
+                                # 4. Síntesis y Veredicto Final Combinado
+                                estrategia_dinamica = f"El comité emite un dictamen integral: Técnicamente el escenario es {resumen_tec.upper()}. Fundamentalmente el activo presenta {fund_text}. Informativamente el contexto de corto plazo evidencia {noti_text}. "
+                                
                                 if "Alto" in riesgo_str or "Elevado" in riesgo_str: 
-                                    estrategia_dinamica = f"Dado el alto régimen de riesgo e inestabilidad actual, el comité sugiere una gestión de capital conservadora. La situación técnica obliga a ajustar los stop loss por debajo de los ${soporte:,.2f} ante el peligro inminente de barridas de liquidez."
-                                elif tendencia_str == "alcista" and estado_macd == "alcista": 
-                                    estrategia_dinamica = f"El firme alineamiento pro-cíclico de los indicadores justifica mantener una postura asertiva sobre el activo. El escenario es óptimo para dejar correr las ganancias (Let profits run), utilizando la cota de ${soporte:,.2f} como trailing stop dinámico."
-                                elif tendencia_str == "bajista": 
-                                    estrategia_dinamica = f"El peso de la macro-tendencia bajista desaconseja intentar atrapar pisos operativos (bottom fishing). Se recomienda neutralidad y conservación de liquidez hasta que se evidencie un patrón institucional de reversión validado por encima de los ${resistencia:,.2f}."
+                                    estrategia_dinamica += f"Conclusión operativa: Dado el alto riesgo, la prioridad absoluta es preservar capital. Ajustar stop loss por debajo de ${soporte:,.2f} sin importar el ruido fundamental o las noticias."
+                                elif resumen_tec == "favorable" and cant_pos >= cant_neg: 
+                                    estrategia_dinamica += f"Conclusión operativa: Alineación alcista confirmada (Técnica + Noticias). Escenario óptimo para dejar correr ganancias (Let profits run), gestionando el riesgo en los ${soporte:,.2f}."
+                                elif resumen_tec == "desfavorable" and cant_neg >= cant_pos: 
+                                    estrategia_dinamica += f"Conclusión operativa: Alineación bajista confirmada. Se desaconseja intentar buscar pisos operativos (bottom fishing). Mantener liquidez hasta recuperar los ${resistencia:,.2f}."
                                 else: 
-                                    estrategia_dinamica = f"El mercado no ofrece actualmente un panorama direccional de alta convicción. Se priorizan tácticas ágiles de swing trading en rangos acotados, recomendando comprar debilidad en la zona de ${soporte:,.2f} y descargar posiciones cerca del techo de ${resistencia:,.2f}."
+                                    estrategia_dinamica += f"Conclusión operativa: Señales mixtas o contradictorias entre la técnica, fundamentos y noticias. Se priorizan tácticas ágiles de swing trading, comprando debilidad cerca de ${soporte:,.2f} y vendiendo en ${resistencia:,.2f}."
+                                # --- FIN DICTAMEN 360 ---
 
                                 texto_parte1 = f"""INFORME EJECUTIVO INSTITUCIONAL: {nombre_display} ({ticker_seleccionado})
 Fecha de Emisión: {pd.Timestamp.now().strftime("%d/%m/%Y")}
 
 1) RESUMEN EJECUTIVO Y CONTEXTO MACRO
 El activo {nombre_display} cotiza a ${precio_actual:,.2f}, {intro_dinamica}
+
+{noticias_contexto}
 
 2) INTERPRETACION DE INDICADORES TECNICOS
 {interpretacion_tecnica}
@@ -836,7 +964,7 @@ Dictamen Final:
                                 pdf = FPDF()
                                 pdf.add_page()
                                 pdf.set_auto_page_break(auto=True, margin=15)
-                                pdf.set_font("Courier", size=10) 
+                                pdf.set_font("Arial", size=10) 
                                 pdf.set_text_color(0, 0, 0)
                                 
                                 pdf.multi_cell(0, 5, txt=texto_parte1.encode('latin-1', 'replace').decode('latin-1'))
@@ -847,7 +975,71 @@ Dictamen Final:
                                     pdf.ln(5)
                                     os.remove(ruta_imagen_grafico)
                                 
-                                pdf.multi_cell(0, 5, txt=texto_parte2_pdf.encode('latin-1', 'replace').decode('latin-1'))
+                                # --- LÓGICA PARA DIBUJAR LA TABLA EN EL PDF ---
+                                # 1. Dividimos el texto para inyectar la tabla en el medio
+                                mitades_texto = texto_parte2_pdf.split("RESUMEN DE SCORING TECNICO:")
+                                primera_mitad = mitades_texto[0]
+                                segunda_mitad = mitades_texto[1] if len(mitades_texto) > 1 else ""
+
+                                # Limpiamos la tabla en texto plano de la segunda mitad para evitar duplicados
+                                if segunda_mitad:
+                                    lineas_segunda_mitad = segunda_mitad.split('\n')
+                                    lineas_limpias = [linea for linea in lineas_segunda_mitad if not linea.strip().startswith('|')]
+                                    segunda_mitad = '\n'.join(lineas_limpias)
+
+                                # 2. Imprimimos la primera parte
+                                pdf.multi_cell(0, 5, txt=primera_mitad.encode('latin-1', 'replace').decode('latin-1'))
+                                
+                                # 3. Recalculamos los estados para la tabla
+                                r_pdf = float(data['RSI'].iloc[-1])
+                                m_pdf = float(data['MACD'].iloc[-1])
+                                s_pdf = float(data['Signal'].iloc[-1])
+                                p_pdf = float(data['Close'].iloc[-1])
+                                s20_pdf = float(data['SMA_20'].iloc[-1])
+                                s50_pdf = float(data['SMA_50'].iloc[-1])
+                                std_20_pdf = float(data['StdDev_20'].iloc[-1])
+                                avg_std_pdf = float(data['StdDev_20'].mean())
+                                
+                                est_tend = "Alcista" if p_pdf > s20_pdf > s50_pdf else ("Bajista" if p_pdf < s20_pdf < s50_pdf else "Neutral")
+                                est_mom = "Alcista" if m_pdf > s_pdf else "Bajista"
+                                est_rsi = "Sobrecompra" if r_pdf > 70 else ("Sobreventa" if r_pdf < 30 else "Neutral")
+                                est_vol = "Alta" if std_20_pdf > avg_std_pdf else "Normal"
+                                est_riesgo = "Elevado" if r_pdf > 70 or r_pdf < 30 or std_20_pdf > (avg_std_pdf * 1.5) else "Medio"
+
+                                # 4. Dibujamos la tabla del Scoring Técnico
+                                pdf.ln(5)
+                                pdf.set_font("Arial", style="B", size=10) # Negrita para el título y encabezados
+                                pdf.cell(0, 6, "RESUMEN DE SCORING TECNICO:", ln=True)
+                                pdf.ln(2)
+                                
+                                datos_tabla = [
+                                    ["INDICADOR", "ESTADO"],
+                                    ["Tendencia", est_tend],
+                                    ["Momentum", est_mom],
+                                    ["RSI", est_rsi],
+                                    ["Volatilidad", est_vol],
+                                    ["Riesgo", est_riesgo]
+                                ]
+                                
+                                ancho_columna = 50
+                                for row_index, fila in enumerate(datos_tabla):
+                                    if row_index == 0:
+                                        # Fila de encabezado con fondo gris claro
+                                        pdf.set_fill_color(220, 220, 220)
+                                        pdf.cell(ancho_columna, 7, fila[0], border=1, fill=True)
+                                        pdf.cell(ancho_columna, 7, fila[1], border=1, fill=True, ln=True)
+                                    else:
+                                        # Filas de datos volviendo a fuente normal
+                                        pdf.set_font("Arial", size=10)
+                                        pdf.cell(ancho_columna, 7, fila[0], border=1)
+                                        pdf.cell(ancho_columna, 7, fila[1], border=1, ln=True)
+
+                                pdf.ln(5)
+
+                                # 5. Imprimimos el resto del texto (Conclusiones)
+                                pdf.set_font("Arial", size=10)
+                                pdf.multi_cell(0, 5, txt=segunda_mitad.encode('latin-1', 'replace').decode('latin-1'))
+                                # --- FIN LÓGICA DE TABLA ---
                                 
                                 # SOLUCIÓN: Usamos un archivo temporal en lugar de BytesIO
                                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
