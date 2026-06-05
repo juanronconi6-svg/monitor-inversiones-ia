@@ -34,6 +34,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 2. FUNCIONES DE ANÁLISIS TÉCNICO ---
+@st.cache_data(ttl=3600, show_spinner=False)
+def descargar_datos_historicos(ticker, periodo, intervalo):
+    return yf.download(ticker, period=periodo, interval=intervalo, progress=False)
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def obtener_info_ticker(ticker):
+    obj = yf.Ticker(ticker)
+    return dict(obj.info)
+
 def calcular_rsi(datos, periodo=14):
     delta = datos.diff()
     ganancia = (delta.where(delta > 0, 0)).ewm(alpha=1/periodo, adjust=False).mean()
@@ -253,6 +262,8 @@ def generar_conclusiones_avanzadas(data, tendencia, momentum, volatilidad_anual,
         riesgo = "Medio-Alto"
     else:
         riesgo = "Medio-Bajo"
+
+
         
     # 2. Cálculo heurístico de Confianza de la señal
     confianza = 50
@@ -351,7 +362,7 @@ else:
 if ticker_seleccionado:
     try:
         with st.spinner(f"Descargando datos para {ticker_seleccionado}..."):
-            data = yf.download(ticker_seleccionado, period=periodo_carga, interval=intervalo_yf, progress=False)
+            data = descargar_datos_historicos(ticker_seleccionado, periodo_carga, intervalo_yf)
             if not data.empty and len(data) >= 10:
                 if isinstance(data.columns, pd.MultiIndex):
                     data.columns = data.columns.get_level_values(0)
@@ -392,8 +403,7 @@ if ticker_seleccionado:
                 periodo_ret = 252 if len(data) >= 252 else len(data) - 1
                 retorno = ((precio_actual - data['Close'].iloc[-periodo_ret]) / data['Close'].iloc[-periodo_ret]) * 100 if periodo_ret > 0 else 0
 
-                ticker_obj = yf.Ticker(ticker_seleccionado)
-                ticker_info = ticker_obj.info
+                ticker_info = obtener_info_ticker(ticker_seleccionado)
 
                 comp_name = ticker_info.get('longName', nombre_display)
                 comp_sector = ticker_info.get('sector', 'No Disponible')
